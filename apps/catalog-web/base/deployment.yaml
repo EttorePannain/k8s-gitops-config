@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-web
+  labels:
+    app: catalog-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalog-web
+  template:
+    metadata:
+      labels:
+        app: catalog-web
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.28.0-alpine
+          ports:
+            - containerPort: 80
