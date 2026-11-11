@@ -10,4 +10,4 @@ namePrefix: dev-
 
 replicas:
   - name: catalog-web
-    count: 2
+    count: 4
