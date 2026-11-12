@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -66,3 +66,52 @@ jobs:
 
       - name: Show published digest
         run: echo "Published digest ${{ steps.publish.outputs.digest }}"
+
+
+      - name: Update GitOps image digest
+        env:
+          IMAGE_DIGEST: ${{ steps.publish.outputs.digest }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          path = Path("apps/catalog-web/overlays/dev/kustomization.yaml")
+          content = path.read_text()
+          digest = os.environ["IMAGE_DIGEST"]
+
+          if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
+              raise SystemExit("Invalid image digest")
+
+          pattern = r"(?m)^([ \t]*digest:[ \t]*)sha256:[0-9a-f]{64}[ \t]*$"
+          updated, count = re.subn(
+              pattern,
+              lambda match: match.group(1) + digest,
+              content
+          )
+
+          if count != 1:
+              raise SystemExit("Expected exactly one image digest")
+
+          path.write_text(updated)
+          PY
+
+          git diff -- apps/catalog-web/overlays/dev/kustomization.yaml
+
+      - name: Commit GitOps change
+        run: |
+          FILE=apps/catalog-web/overlays/dev/kustomization.yaml
+
+          if git diff --quiet -- "$FILE"; then
+            echo "GitOps digest unchanged"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add "$FILE"
+          git commit -m "Update catalog-web image digest [skip ci]"
+          git push origin HEAD:main
