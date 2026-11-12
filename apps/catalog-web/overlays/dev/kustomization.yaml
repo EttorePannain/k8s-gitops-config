@@ -11,3 +11,7 @@ namePrefix: dev-
 replicas:
   - name: catalog-web
     count: 2
+images:
+  - name: nginx
+    newName: ghcr.io/ettorepannain/catalog-web
+    digest: sha256:bbf14a89f19c72e0b7a3cf9ed36112de8fe3977994f66e7f8433a150617b2ee6
