@@ -1,0 +1,68 @@
+
+name: Catalog Web CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app-source/catalog-web/**'
+      - '.github/workflows/catalog-web-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-test-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build local image
+        run: |
+          docker build \
+            -t catalog-web-test:${{ github.sha }} \
+            ./app-source/catalog-web
+
+      - name: HTTP smoke test
+        run: |
+          docker run -d \
+            --name catalog-web-test \
+            -p 127.0.0.1:18060:80 \
+            catalog-web-test:${{ github.sha }}
+
+          trap 'docker rm -f catalog-web-test >/dev/null 2>&1 || true' EXIT
+
+          for i in {1..15}; do
+            if curl -fsS http://127.0.0.1:18060/ \
+              | grep -q 'Catalog Web - Versione 1'; then
+              echo "HTTP test passed"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          exit 1
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish image
+        id: publish
+        uses: docker/build-push-action@v6
+        with:
+          context: ./app-source/catalog-web
+          push: true
+          tags: ghcr.io/ettorepannain/catalog-web:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/EttorePannain/k8s-gitops-config
+
+      - name: Show published digest
+        run: echo "Published digest ${{ steps.publish.outputs.digest }}"
