@@ -68,36 +68,41 @@ jobs:
         run: echo "Published digest ${{ steps.publish.outputs.digest }}"
 
 
+      - name: Install Kustomize CLI
+        run: |
+          KUSTOMIZE_VERSION=v5.8.1
+
+          curl -fsSL \
+            -o /tmp/kustomize.tar.gz \
+            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
+
+          mkdir -p "$HOME/.local/bin"
+          tar -xzf /tmp/kustomize.tar.gz \
+            -C "$HOME/.local/bin" kustomize
+
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+          "$HOME/.local/bin/kustomize" version
+
       - name: Update GitOps image digest
         env:
           IMAGE_DIGEST: ${{ steps.publish.outputs.digest }}
         run: |
-          python3 - <<'PY'
-          import os
-          import re
-          from pathlib import Path
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || exit 1
 
-          path = Path("apps/catalog-web/overlays/dev/kustomization.yaml")
-          content = path.read_text()
-          digest = os.environ["IMAGE_DIGEST"]
+          cd apps/catalog-web/overlays/dev
 
-          if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
-              raise SystemExit("Invalid image digest")
+          kustomize edit set image \
+            "nginx=ghcr.io/ettorepannain/catalog-web@$IMAGE_DIGEST"
 
-          pattern = r"(?m)^([ \t]*digest:[ \t]*)sha256:[0-9a-f]{64}[ \t]*$"
-          updated, count = re.subn(
-              pattern,
-              lambda match: match.group(1) + digest,
-              content
-          )
+          kustomize build . > /tmp/catalog-web-rendered.yaml
 
-          if count != 1:
-              raise SystemExit("Expected exactly one image digest")
+          grep 'replicas: 2' /tmp/catalog-web-rendered.yaml
+          grep -F "ghcr.io/ettorepannain/catalog-web@$IMAGE_DIGEST" \
+            /tmp/catalog-web-rendered.yaml
 
-          path.write_text(updated)
-          PY
+          git diff -- kustomization.yaml
 
-          git diff -- apps/catalog-web/overlays/dev/kustomization.yaml
 
       - name: Commit GitOps change
         run: |
