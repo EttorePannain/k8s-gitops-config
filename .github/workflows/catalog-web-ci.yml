@@ -38,7 +38,7 @@ jobs:
 
           for i in {1..15}; do
             if curl -fsS http://127.0.0.1:18060/ \
-              | grep -q 'Catalog Web - Versione 1'; then
+              | grep -q 'Applicazione dimostrativa CI/GitOps'; then
               echo "HTTP test passed"
               exit 0
             fi
