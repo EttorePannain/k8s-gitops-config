@@ -2,16 +2,16 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../base
+- ../../base
 
 namespace: lab-gitops
 
 namePrefix: dev-
 
 replicas:
-  - name: catalog-web
-    count: 2
+- count: 2
+  name: catalog-web
 images:
-  - name: nginx
-    newName: ghcr.io/ettorepannain/catalog-web
-    digest: sha256:19414eb7e6a4bd6403afb45fb28987d3612ec7d608c081a2881ddbe506c37227
+- digest: sha256:c55ee3105f415a2e7d2b9c86a275dc7264dce7661b34a42c900fe031fbe01299
+  name: nginx
+  newName: ghcr.io/ettorepannain/catalog-web
