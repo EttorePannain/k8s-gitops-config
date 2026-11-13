@@ -14,4 +14,4 @@ replicas:
 images:
   - name: nginx
     newName: ghcr.io/ettorepannain/catalog-web
-    digest: sha256:739fc167d420dc7f8b647fd195b43b6e0ae20f2677faae590945e05b2e83cbd0
+    digest: sha256:19414eb7e6a4bd6403afb45fb28987d3612ec7d608c081a2881ddbe506c37227
